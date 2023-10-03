@@ -12,6 +12,7 @@
 # Pieter Abbeel (pabbeel@cs.berkeley.edu).
 
 
+from cmath import inf
 from util import manhattanDistance
 from game import Directions
 import random, util
@@ -74,7 +75,30 @@ class ReflexAgent(Agent):
         newScaredTimes = [ghostState.scaredTimer for ghostState in newGhostStates]
 
         "*** YOUR CODE HERE ***"
-        return successorGameState.getScore()
+        remainingFood = newFood.asList()
+        # Calculate the Manhattan distances from Pacman to each remaining food pellet
+        foodDistances = [manhattanDistance(newPos, food) for food in remainingFood]
+        # Determine the minimum distance to food, or 0 if no food is left
+        minFoodDistance = min(foodDistances, default=0)
+
+        # Check if Pacman will collect a power pellet
+        if currentGameState.getNumFood() > successorGameState.getNumFood():
+            minFoodDistance = -100  # Encourage Pacman to eat pellets
+
+        # Calculate the distance to the closest ghost
+        ghostDistances = [manhattanDistance(newPos, ghost.getPosition()) for ghost in newGhostStates]
+
+        # Determine the minimum distance to a ghost, or 0 if no ghosts are nearby
+        minGhostDistance = min(ghostDistances, default=0)
+
+        # Avoid getting too close to ghosts
+        if minGhostDistance < 2:
+            return -float('inf')
+
+        # Calculate the evaluation score
+        score = successorGameState.getScore() - minFoodDistance + minGhostDistance
+
+        return score
 
 def scoreEvaluationFunction(currentGameState):
     """
@@ -135,7 +159,54 @@ class MinimaxAgent(MultiAgentSearchAgent):
         Returns whether or not the game state is a losing state
         """
         "*** YOUR CODE HERE ***"
-        util.raiseNotDefined()
+        def minimax(state, depth, agentIndex):
+            if depth == 0 or state.isWin() or state.isLose():
+                return self.evaluationFunction(state), None
+            
+            # Pacman's turn (max layer)
+            if agentIndex == 0:  
+                bestValue = -float('inf')
+                bestAction = None
+                 # Iterate over legal actions for Pacman
+                for action in state.getLegalActions(agentIndex):
+                    result = minimax(state.generateSuccessor(agentIndex, action), depth, 1)
+                    # Extract the value from the result
+                    value = result[0] 
+                    if value > bestValue:
+                        bestValue = value
+                        bestAction = action
+                return bestValue, bestAction
+            
+            # Ghosts' turns (min layer)
+            else:  
+                bestValue = float('inf')
+                bestAction = None
+                # Determine the index of the next agent
+                nextAgentIndex = (agentIndex + 1) % state.getNumAgents()
+                
+                # Iterate over legal actions for the current ghost
+                for action in state.getLegalActions(agentIndex):
+                    successorState = state.generateSuccessor(agentIndex, action)
+                    # Recursively compute the value of successor states
+
+                    if nextAgentIndex == 0:
+                        # If the next agent is Pacman, reduce the depth by 1 (max layer)
+                        newDepth = depth - 1
+                    else:
+                        # If the next agent is a ghost, keep the same depth (min layer)
+                        newDepth = depth
+
+                    # Calculate the value of the successor state using minimax
+                    value, _ = minimax(successorState, newDepth, nextAgentIndex)
+
+                    # Check if this value is better than the current best value
+                    if value < bestValue:
+                            bestValue = value
+                            bestAction = action
+                return bestValue, bestAction
+        # Start with Pacman (agentIndex = 0)
+        value, action = minimax(gameState, self.depth, 0)  
+        return action
 
 class AlphaBetaAgent(MultiAgentSearchAgent):
     """
