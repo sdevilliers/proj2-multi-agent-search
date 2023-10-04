@@ -11,7 +11,7 @@
             "program": "autograder.py",
             "console": "integratedTerminal",
             "justMyCode": true,
-            "args": ["-q", "q4"]
+            "args": ["-q", "q3"]
         }
     ]
 }
